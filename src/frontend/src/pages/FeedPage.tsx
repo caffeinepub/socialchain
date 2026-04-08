@@ -19,89 +19,9 @@ import { useBackend } from "@/hooks/useBackend";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Image, PenSquare, Plus, X, Zap } from "lucide-react";
+import { Image, PenSquare, X, Zap } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-
-// Sample feed data for initial load
-const SAMPLE_POSTS: Post[] = [
-  {
-    id: "1",
-    authorId: "p1",
-    authorName: "Alex Rivers",
-    authorUsername: "arivers",
-    content:
-      "Sunset vibes at Mt. Rainier! The view from the summit was absolutely breathtaking 🌄 #nature #travel #photography",
-    imageUrl: "/assets/generated/hero-social-crypto.dim_1200x600.jpg",
-    likeCount: 1247,
-    commentCount: 48,
-    shareCount: 15,
-    createdAt: Date.now() - 1000 * 60 * 23,
-    liked: false,
-  },
-  {
-    id: "2",
-    authorId: "p2",
-    authorName: "CryptoInsights",
-    authorUsername: "ci",
-    content:
-      "ICP just broke resistance at $12. Looking bullish for Q2! The on-chain metrics are incredibly strong right now. Accumulation phase is real 🚀 #ICP #crypto #blockchain",
-    likeCount: 892,
-    commentCount: 134,
-    shareCount: 67,
-    createdAt: Date.now() - 1000 * 60 * 60 * 2,
-    liked: true,
-  },
-  {
-    id: "3",
-    authorId: "p3",
-    authorName: "Sarah Chen",
-    authorUsername: "sarahc",
-    content:
-      "Just received 5 ICP as a tip for my photography series! Web3 social is real — getting paid for your content without any middleman 🙌 @socialchain #ICP #web3",
-    likeCount: 2143,
-    commentCount: 267,
-    shareCount: 189,
-    createdAt: Date.now() - 1000 * 60 * 60 * 5,
-    liked: false,
-  },
-  {
-    id: "4",
-    authorId: "p4",
-    authorName: "Dev Marcus",
-    authorUsername: "devmarcus",
-    content:
-      "Built my first dapp on ICP in 48 hours. The developer experience with Motoko is surprisingly smooth. Canister upgrades with no downtime is a game changer 💻 #buildonICP",
-    likeCount: 445,
-    commentCount: 32,
-    shareCount: 88,
-    createdAt: Date.now() - 1000 * 60 * 60 * 12,
-    liked: false,
-  },
-  {
-    id: "5",
-    authorId: "p5",
-    authorName: "Luna Nakamura",
-    authorUsername: "lunan",
-    content:
-      "Morning walks > morning scrolls. But when you can do both on #SocialChain… 🌅 Tipping my favorite artist 2 ICP for that last album drop was so seamless!",
-    likeCount: 3891,
-    commentCount: 512,
-    shareCount: 234,
-    createdAt: Date.now() - 1000 * 60 * 60 * 18,
-    liked: true,
-  },
-];
-
-const STORY_USERS = [
-  { id: "p1", name: "Alex Rivers", username: "arivers", hasNew: true },
-  { id: "p3", name: "Sarah Chen", username: "sarahc", hasNew: true },
-  { id: "p2", name: "CryptoInsights", username: "ci", hasNew: false },
-  { id: "p5", name: "Luna Nakamura", username: "lunan", hasNew: true },
-  { id: "p4", name: "Dev Marcus", username: "devmarcus", hasNew: false },
-  { id: "p6", name: "NexaDAO", username: "nexadao", hasNew: true },
-  { id: "p7", name: "Wave Rider", username: "waverider", hasNew: false },
-];
 
 type FeedTab = "foryou" | "following";
 
@@ -177,21 +97,18 @@ export function FeedPage() {
   const { data: posts, isLoading } = useQuery<Post[]>({
     queryKey: ["feed"],
     queryFn: async () => {
-      if (!actor) return SAMPLE_POSTS;
+      if (!actor) return [];
       try {
         const result = await actor.getAllPosts();
-        if (result && result.length > 0) {
-          return result
-            .map((p) => mapBackendPost(p, principal))
-            .sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
-        }
-        return SAMPLE_POSTS;
+        if (!result || result.length === 0) return [];
+        return result
+          .map((p) => mapBackendPost(p, principal))
+          .sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
       } catch {
-        return SAMPLE_POSTS;
+        return [];
       }
     },
     enabled: isReady,
-    initialData: SAMPLE_POSTS,
     staleTime: 30_000,
   });
 
@@ -251,52 +168,6 @@ export function FeedPage() {
       onNewPost={() => setIsNewPostOpen(true)}
       onWalletOpen={() => navigate({ to: "/wallet" })}
     >
-      {/* Stories bar */}
-      <div className="card-elevated rounded-xl p-3 mb-4 overflow-x-auto">
-        <div className="flex gap-3 items-center min-w-max">
-          {/* Add story (my story) */}
-          <div className="flex flex-col items-center gap-1.5 cursor-pointer select-none">
-            <div className="relative w-14 h-14 shrink-0">
-              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
-                <Avatar name={principal?.slice(0, 8) ?? "You"} size="md" />
-              </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center border-2 border-card">
-                <Plus className="w-3 h-3 text-primary-foreground" />
-              </span>
-            </div>
-            <span className="text-[10px] text-muted-foreground font-medium leading-tight max-w-[56px] truncate text-center">
-              Your Story
-            </span>
-          </div>
-
-          {/* Story rings */}
-          {STORY_USERS.map((user) => (
-            <button
-              key={user.id}
-              type="button"
-              className="flex flex-col items-center gap-1.5 cursor-pointer select-none transition-smooth hover:opacity-80 active:scale-95"
-              aria-label={`View ${user.name}'s story`}
-              data-ocid="story-ring"
-            >
-              <div
-                className={`w-14 h-14 rounded-full p-[2px] ${
-                  user.hasNew
-                    ? "bg-gradient-to-tr from-accent via-secondary to-primary"
-                    : "bg-muted"
-                }`}
-              >
-                <div className="w-full h-full rounded-full border-2 border-card overflow-hidden flex items-center justify-center">
-                  <Avatar name={user.name} size="md" />
-                </div>
-              </div>
-              <span className="text-[10px] text-muted-foreground font-medium leading-tight max-w-[56px] truncate text-center">
-                {user.username}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Tab toggle — For You / Following */}
       <div className="flex items-center gap-0 mb-4 card-elevated rounded-xl overflow-hidden p-1">
         <button

@@ -1,7 +1,6 @@
 import type { Profile } from "@/backend.d";
 import { Avatar } from "@/components/common/Avatar";
 import { Layout } from "@/components/layout/Layout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,17 +9,8 @@ import { useBackend } from "@/hooks/useBackend";
 import { useQuery } from "@tanstack/react-query";
 
 import { useNavigate } from "@tanstack/react-router";
-import { Compass, Hash, Search, TrendingUp, Users, X } from "lucide-react";
+import { Compass, Search, Users, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const TRENDING_TAGS = [
-  { tag: "ICP", posts: "12.4K", change: "+24%" },
-  { tag: "web3social", posts: "8.1K", change: "+18%" },
-  { tag: "buildonICP", posts: "5.6K", change: "+31%" },
-  { tag: "crypto", posts: "44.2K", change: "+3%" },
-  { tag: "photography", posts: "21.7K", change: "+7%" },
-  { tag: "blockchain", posts: "38.9K", change: "+2%" },
-];
 
 function UserCard({
   profile,
@@ -205,78 +195,43 @@ export function ExplorePage() {
           )}
         </section>
       ) : (
-        <>
-          {/* Trending hashtags */}
-          <section className="mb-8">
-            <h2 className="font-display font-bold text-sm text-foreground mb-3 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              Trending Topics
-            </h2>
-            <div
-              className="flex flex-wrap gap-2"
-              data-ocid="explore-trending-tags"
-            >
-              {TRENDING_TAGS.map((item) => (
-                <button
-                  key={item.tag}
-                  type="button"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border hover:border-primary/40 hover:bg-primary/5 transition-smooth text-sm"
-                  onClick={() => handleInput(`#${item.tag}`)}
-                >
-                  <Hash className="w-3 h-3 text-primary" />
-                  <span className="font-medium text-foreground">
-                    {item.tag}
-                  </span>
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] text-chart-5 bg-chart-5/10 border-chart-5/30 px-1.5"
-                  >
-                    {item.change}
-                  </Badge>
-                </button>
+        <section>
+          <h2 className="font-display font-bold text-sm text-foreground mb-3 flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            People on SocialChain
+          </h2>
+
+          {isUsersLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <UserCardSkeleton key={i} />
               ))}
             </div>
-          </section>
-
-          {/* Suggested users */}
-          <section>
-            <h2 className="font-display font-bold text-sm text-foreground mb-3 flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
-              Suggested People
-            </h2>
-
-            {isUsersLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <UserCardSkeleton key={i} />
-                ))}
-              </div>
-            ) : !suggestedUsers || suggestedUsers.length === 0 ? (
-              <div
-                className="flex flex-col items-center justify-center py-16 text-center"
-                data-ocid="explore-empty-users"
-              >
-                <Users className="w-12 h-12 text-muted-foreground/30 mb-4" />
-                <p className="font-display font-semibold text-foreground mb-1">
-                  No one here yet
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Be the first to invite friends to SocialChain
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3" data-ocid="explore-suggested-users">
-                {suggestedUsers.map((profile) => (
-                  <UserCard
-                    key={profile.id.toString()}
-                    profile={profile}
-                    onViewProfile={handleViewProfile}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        </>
+          ) : !suggestedUsers || suggestedUsers.length === 0 ? (
+            <div
+              className="flex flex-col items-center justify-center py-16 text-center"
+              data-ocid="explore-empty-users"
+            >
+              <Users className="w-12 h-12 text-muted-foreground/30 mb-4" />
+              <p className="font-display font-semibold text-foreground mb-1">
+                No one here yet
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Be the first to invite friends to SocialChain
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3" data-ocid="explore-suggested-users">
+              {suggestedUsers.map((profile) => (
+                <UserCard
+                  key={profile.id.toString()}
+                  profile={profile}
+                  onViewProfile={handleViewProfile}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
     </Layout>
   );

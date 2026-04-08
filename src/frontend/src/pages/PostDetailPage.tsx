@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/common/Avatar";
+import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import type { Post } from "@/components/common/PostCard";
 import { Layout } from "@/components/layout/Layout";
@@ -14,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  FileQuestion,
   Heart,
   Image,
   MessageCircle,
@@ -42,74 +44,6 @@ interface LocalComment {
 interface LocalPost extends Post {
   authorPrincipal?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Sample data (shown before backend data loads)
-// ---------------------------------------------------------------------------
-const SAMPLE_COMMENTS: LocalComment[] = [
-  {
-    id: "c1",
-    authorId: "p3",
-    authorName: "Sarah Chen",
-    authorUsername: "sarahc",
-    content: "Absolutely stunning! What camera did you use? 😍",
-    createdAt: Date.now() - 1000 * 60 * 15,
-    likeCount: 24,
-  },
-  {
-    id: "c2",
-    authorId: "p4",
-    authorName: "Dev Marcus",
-    authorUsername: "devmarcus",
-    content: "Mt. Rainier is unreal. Been there twice and it never gets old 🏔️",
-    createdAt: Date.now() - 1000 * 60 * 45,
-    likeCount: 12,
-  },
-  {
-    id: "c3",
-    authorId: "p2",
-    authorName: "CryptoInsights",
-    authorUsername: "ci",
-    content: "Great shot! Also just sent you some ICP — keep creating! 🚀",
-    createdAt: Date.now() - 1000 * 60 * 60 * 2,
-    likeCount: 38,
-  },
-  {
-    id: "c4",
-    authorId: "p5",
-    authorName: "Luna Nakamura",
-    authorUsername: "lunan",
-    content:
-      "The colors in this shot are incredible. Nature is unmatched ✨ #photography",
-    createdAt: Date.now() - 1000 * 60 * 60 * 3,
-    likeCount: 67,
-  },
-  {
-    id: "c5",
-    authorId: "p6",
-    authorName: "NexaDAO",
-    authorUsername: "nexadao",
-    content: "Tipped 1 ICP for this masterpiece 🎨 Web3 social is the future!",
-    createdAt: Date.now() - 1000 * 60 * 60 * 4,
-    likeCount: 19,
-  },
-];
-
-const SAMPLE_POST: LocalPost = {
-  id: "1",
-  authorId: "p1",
-  authorPrincipal: "p1",
-  authorName: "Alex Rivers",
-  authorUsername: "arivers",
-  content:
-    "Sunset vibes at Mt. Rainier! The view from the summit was absolutely breathtaking 🌄 #nature #travel #photography",
-  imageUrl: "/assets/generated/hero-social-crypto.dim_1200x600.jpg",
-  likeCount: 1247,
-  commentCount: 48,
-  shareCount: 15,
-  createdAt: Date.now() - 1000 * 60 * 23,
-  liked: false,
-};
 
 // ---------------------------------------------------------------------------
 // Map backend objects to local shapes
@@ -471,10 +405,6 @@ function CommentRow({
 }: CommentRowProps) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(comment.likeCount);
-  const [replyPrefix, setReplyPrefix] = useState("");
-
-  // expose to parent via callback? No — just local state for UI
-  void replyPrefix;
 
   function toggleLike() {
     setLiked((prev) => !prev);
@@ -542,7 +472,6 @@ function CommentRow({
             <button
               type="button"
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-smooth"
-              onClick={() => setReplyPrefix(`@${comment.authorUsername} `)}
             >
               Reply
             </button>
@@ -578,21 +507,20 @@ export function PostDetailPage() {
     null,
   );
 
-  const { data: post, isLoading: postLoading } = useQuery<LocalPost>({
+  const { data: post, isLoading: postLoading } = useQuery<LocalPost | null>({
     queryKey: ["post", id],
     queryFn: async () => {
-      if (!actor) return SAMPLE_POST;
+      if (!actor) return null;
       try {
         const bigId = BigInt(id);
         const result = await actor.getPost(bigId);
         if (result) return mapBackendPost(result, principal);
-        return SAMPLE_POST;
+        return null;
       } catch {
-        return SAMPLE_POST;
+        return null;
       }
     },
     enabled: isReady,
-    initialData: SAMPLE_POST,
   });
 
   const { data: comments, isLoading: commentsLoading } = useQuery<
@@ -600,20 +528,17 @@ export function PostDetailPage() {
   >({
     queryKey: ["comments", id],
     queryFn: async () => {
-      if (!actor) return SAMPLE_COMMENTS;
+      if (!actor) return [];
       try {
         const bigId = BigInt(id);
         const result = await actor.getComments(bigId);
-        if (result && result.length > 0) {
-          return result.map(mapBackendComment);
-        }
-        return SAMPLE_COMMENTS;
+        if (!result || result.length === 0) return [];
+        return result.map(mapBackendComment);
       } catch {
-        return SAMPLE_COMMENTS;
+        return [];
       }
     },
     enabled: isReady,
-    initialData: SAMPLE_COMMENTS,
   });
 
   const addComment = useMutation({
@@ -761,6 +686,12 @@ export function PostDetailPage() {
             isDeleting={deletePost.isPending}
           />
         )
+      ) : !postLoading ? (
+        <EmptyState
+          icon={FileQuestion}
+          title="Post not found"
+          description="This post may have been deleted or doesn't exist."
+        />
       ) : null}
 
       <Separator className="my-5 bg-border" />
@@ -776,8 +707,8 @@ export function PostDetailPage() {
           <div className="flex justify-center py-8">
             <LoadingSpinner size="md" />
           </div>
-        ) : (
-          comments?.map((comment) => (
+        ) : comments && comments.length > 0 ? (
+          comments.map((comment) => (
             <CommentRow
               key={comment.id}
               comment={comment}
@@ -790,6 +721,16 @@ export function PostDetailPage() {
               }
             />
           ))
+        ) : (
+          <div
+            className="flex flex-col items-center justify-center py-10 text-center"
+            data-ocid="post-detail-no-comments"
+          >
+            <MessageCircle className="w-10 h-10 text-muted-foreground/30 mb-3" />
+            <p className="text-sm text-muted-foreground">
+              No comments yet — be the first to reply!
+            </p>
+          </div>
         )}
       </div>
 

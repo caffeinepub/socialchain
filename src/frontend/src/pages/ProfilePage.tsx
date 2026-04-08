@@ -66,47 +66,6 @@ interface LocalProfile {
   joinedDate?: string;
 }
 
-const SAMPLE_PROFILE: LocalProfile = {
-  id: "p1",
-  username: "arivers",
-  displayName: "Alex Rivers",
-  bio: "Photographer & crypto enthusiast. Capturing the world one shot at a time 📸 | ICP believer since 2021",
-  avatarUrl: "",
-  contactsCount: 892,
-  postsCount: 234,
-  walletAddress: "ae4f8b2c1d9e7a3f",
-  location: "San Francisco, CA",
-  joinedDate: "March 2023",
-};
-
-const SAMPLE_POSTS: Post[] = [
-  {
-    id: "1",
-    authorId: "p1",
-    authorName: "Alex Rivers",
-    authorUsername: "arivers",
-    content:
-      "Sunset vibes at Mt. Rainier! Absolutely breathtaking 🌄 #nature #travel",
-    imageUrl: "/assets/generated/hero-social-crypto.dim_1200x600.jpg",
-    likeCount: 1247,
-    commentCount: 48,
-    shareCount: 15,
-    createdAt: Date.now() - 1000 * 60 * 23,
-  },
-  {
-    id: "6",
-    authorId: "p1",
-    authorName: "Alex Rivers",
-    authorUsername: "arivers",
-    content:
-      "Just hit 12K followers on SocialChain! Thank you all for the love and support 🙏 Every ICP tip means the world to me. #community",
-    likeCount: 3200,
-    commentCount: 445,
-    shareCount: 120,
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
-  },
-];
-
 const COVER_GRADIENTS = [
   "from-primary/50 via-secondary/30 to-accent/40",
   "from-secondary/50 via-accent/30 to-primary/40",
@@ -539,7 +498,7 @@ function CreateProfileForm({ onCreated }: CreateProfileFormProps) {
                 Display Name
               </Label>
               <Input
-                placeholder="Alex Rivers"
+                placeholder="Your display name"
                 value={form.displayName}
                 onChange={(e) =>
                   setForm({ ...form, displayName: e.target.value })
@@ -631,28 +590,25 @@ export function ProfilePage() {
   const { data: posts, isLoading: postsLoading } = useQuery<Post[]>({
     queryKey: ["user-posts", targetId],
     queryFn: async () => {
-      if (!actor) return SAMPLE_POSTS;
+      if (!actor) return [];
       try {
         const { Principal } = await import("@icp-sdk/core/principal");
         const principalObj = Principal.fromText(targetId);
         const result = await actor.getPostsByUser(principalObj);
-        if (result && result.length > 0) {
-          return result.map((p) => mapBackendPost(p, targetId));
-        }
-        return SAMPLE_POSTS;
+        if (!result || result.length === 0) return [];
+        return result.map((p) => mapBackendPost(p, targetId));
       } catch {
-        return SAMPLE_POSTS;
+        return [];
       }
     },
     enabled: isReady && !!targetId,
-    initialData: SAMPLE_POSTS,
   });
 
   const noProfile =
     isOwnProfile && profileQuery.data != null && !profileQuery.data.displayName;
 
-  // Map backend profile to local shape
-  const profile: LocalProfile = profileQuery.data?.displayName
+  // Map backend profile to local shape — only if real data is available
+  const profile: LocalProfile | null = profileQuery.data?.displayName
     ? {
         id: profileQuery.data.id.toText(),
         displayName: profileQuery.data.displayName,
@@ -662,9 +618,9 @@ export function ProfilePage() {
         contactsCount: profileQuery.data.contacts?.length ?? 0,
         postsCount: posts?.length ?? 0,
       }
-    : SAMPLE_PROFILE;
+    : null;
 
-  const coverGradient = getCoverGradient(profile.id ?? targetId ?? "default");
+  const coverGradient = getCoverGradient(profile?.id ?? targetId ?? "default");
 
   if (profileQuery.isLoading) {
     return (
@@ -680,6 +636,31 @@ export function ProfilePage() {
     return (
       <Layout>
         <CreateProfileForm onCreated={() => profileQuery.refetch()} />
+      </Layout>
+    );
+  }
+
+  // Profile not found (not own profile, no data returned)
+  if (!profile) {
+    return (
+      <Layout>
+        <div className="mb-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground -ml-1"
+            onClick={() => navigate({ to: "/feed" })}
+            data-ocid="profile-back-btn"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Back to Feed
+          </Button>
+        </div>
+        <EmptyState
+          icon={Grid3X3}
+          title="Profile not found"
+          description="This user hasn't joined SocialChain yet."
+        />
       </Layout>
     );
   }
