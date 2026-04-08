@@ -3,6 +3,7 @@ import Map "mo:core/Map";
 import ProfileMixin "mixins/profile-api";
 import FeedMixin "mixins/feed-api";
 import WalletMixin "mixins/wallet-api";
+import RecoveryPhraseMixin "mixins/recovery-phrase-api";
 import ProfileTypes "types/profile";
 import FeedTypes "types/feed";
 import WalletTypes "types/wallet";
@@ -22,8 +23,12 @@ actor {
   // Wallet state
   let txHistory = Map.empty<Common.UserId, List.List<WalletTypes.Transaction>>();
 
+  // Recovery phrase state
+  let recoveryPhrases = Map.empty<Common.UserId, Text>();
+
   // Include domain mixins
   include ProfileMixin(profiles, usernames);
   include FeedMixin(posts, comments);
   include WalletMixin(txHistory);
+  include RecoveryPhraseMixin(recoveryPhrases);
 };

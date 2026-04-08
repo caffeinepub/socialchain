@@ -84,6 +84,11 @@ actor {
       var root : Node__46230540<UserId__158757552, Profile__901378260>;
       var size : Nat__490723111
     };
+  stable recoveryPhrases :
+    {
+      var root : Node__46230540<UserId__158757552, Text>;
+      var size : Nat__490723111
+    };
   stable txHistory :
     {
       var root :

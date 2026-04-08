@@ -78,6 +78,7 @@ service : {
   deletePost: (postId: PostId) -> (Result);
   editPost: (postId: PostId, "text": text, imageUrl: opt text) -> (Result);
   generateInviteLink: (username: text) -> (text);
+  generateRecoveryPhrase: () -> (opt text);
   getAllPosts: () -> (vec Post) query;
   getBalance: (token: TokenType) -> (nat);
   getComments: (postId: PostId) -> (vec Comment) query;
@@ -87,6 +88,7 @@ service : {
   getPost: (id: PostId) -> (opt Post) query;
   getPostsByUser: (userId: UserId) -> (vec Post) query;
   getProfile: (userId: UserId) -> (opt Profile) query;
+  getRecoveryPhrase: () -> (opt text) query;
   getTransactionHistory: () -> (vec Transaction);
   getUsername: () -> (opt text);
   likePost: (postId: PostId) -> (Result);

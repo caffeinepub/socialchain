@@ -38,6 +38,9 @@ const NotificationsPage = lazy(() =>
 const InvitePage = lazy(() =>
   import("@/pages/InvitePage").then((m) => ({ default: m.InvitePage })),
 );
+const OnboardingPage = lazy(() =>
+  import("@/pages/OnboardingPage").then((m) => ({ default: m.OnboardingPage })),
+);
 
 function PageLoader() {
   return (
@@ -78,6 +81,10 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   beforeLoad: () => {
+    const onboardingDone = localStorage.getItem("onboardingComplete");
+    if (!onboardingDone) {
+      throw redirect({ to: "/onboarding" });
+    }
     throw redirect({ to: "/feed" });
   },
   component: () => null,
@@ -86,6 +93,13 @@ const indexRoute = createRoute({
 const feedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/feed",
+  beforeLoad: () => {
+    // First-time users should complete onboarding before the feed
+    const onboardingDone = localStorage.getItem("onboardingComplete");
+    if (!onboardingDone) {
+      throw redirect({ to: "/onboarding" });
+    }
+  },
   component: () => (
     <AuthGuardedRoute>
       <Suspense fallback={<PageLoader />}>
@@ -183,6 +197,18 @@ const inviteRoute = createRoute({
   ),
 });
 
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/onboarding",
+  component: () => (
+    <AuthGuardedRoute>
+      <Suspense fallback={<PageLoader />}>
+        <OnboardingPage />
+      </Suspense>
+    </AuthGuardedRoute>
+  ),
+});
+
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "*",
@@ -203,6 +229,7 @@ const routeTree = rootRoute.addChildren([
   activityRoute,
   notificationsRoute,
   inviteRoute,
+  onboardingRoute,
   notFoundRoute,
 ]);
 

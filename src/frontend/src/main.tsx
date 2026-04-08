@@ -14,6 +14,19 @@ declare global {
   }
 }
 
+// II_URL is injected at build time via vite.config.js define block.
+// The define block guarantees a string literal — never undefined.
+// Additionally hardcode the production fallback here as a safety net
+// so sign-in works even if the build-time injection somehow fails.
+const PRODUCTION_II_URL = "https://identity.internetcomputer.org/";
+const II_URL: string =
+  (process.env.II_URL as string | undefined) || PRODUCTION_II_URL;
+
+// Log the II URL being used so any future issues are easy to diagnose.
+if (typeof window !== "undefined") {
+  console.info("[SocialChain] Internet Identity URL:", II_URL);
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -25,7 +38,15 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    <InternetIdentityProvider>
+    <InternetIdentityProvider
+      createOptions={{
+        loginOptions: {
+          // Explicitly pass the identity provider URL — this prevents silent
+          // failures when II_URL is missing from env.json at runtime.
+          identityProvider: II_URL,
+        },
+      }}
+    >
       <App />
     </InternetIdentityProvider>
   </QueryClientProvider>,

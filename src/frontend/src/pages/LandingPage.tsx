@@ -1,20 +1,26 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useFileUpload } from "@/hooks/useFileUpload";
 import {
   AlertTriangle,
   Bitcoin,
+  Camera,
+  CheckCircle2,
   Globe,
   Heart,
   Link2,
+  Loader2,
   MessageCircle,
   RefreshCw,
   Shield,
   Smartphone,
   TrendingUp,
   Wallet,
+  X,
   Zap,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useCallback, useRef, useState } from "react";
 
 const FEATURES = [
   {
@@ -129,20 +135,203 @@ const TOKENS = [
   { symbol: "ckUSDC", name: "USD Coin", color: "text-accent", icon: Wallet },
 ];
 
+// ── Profile Picture Picker ────────────────────────────────────────────────────
+
+function ProfilePicturePicker() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isUploading, progress, error, uploadFile, reset } = useFileUpload();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Show local preview immediately
+      const localPreview = URL.createObjectURL(file);
+      setPreviewUrl(localPreview);
+      setUploadedUrl(null);
+
+      try {
+        const url = await uploadFile(file);
+        setUploadedUrl(url);
+        // Store for post-sign-in pickup
+        localStorage.setItem("pendingAvatarUrl", url);
+      } catch {
+        // error state surfaced by hook
+      }
+    },
+    [uploadFile],
+  );
+
+  const handleClear = useCallback(() => {
+    setPreviewUrl(null);
+    setUploadedUrl(null);
+    reset();
+    localStorage.removeItem("pendingAvatarUrl");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [reset]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="mt-6 mb-2"
+      data-ocid="landing-profile-pic-section"
+    >
+      {/* Subtle divider label */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-px flex-1 bg-border/60" />
+        <span className="text-xs text-muted-foreground font-medium tracking-wide uppercase">
+          Optional
+        </span>
+        <div className="h-px flex-1 bg-border/60" />
+      </div>
+
+      <div className="flex flex-col items-center gap-3 bg-card/60 border border-border rounded-2xl px-5 py-5 backdrop-blur-sm">
+        <p className="text-sm font-display font-semibold text-foreground">
+          Set your profile picture
+        </p>
+        <p className="text-xs text-muted-foreground -mt-1 text-center max-w-xs">
+          Choose a photo before you sign in — it'll be waiting when you arrive.
+        </p>
+
+        {/* Avatar preview ring */}
+        <div className="relative group">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            aria-label="Choose profile photo"
+            data-ocid="landing-avatar-picker"
+            className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-border hover:ring-primary/60 transition-all duration-200 focus-visible:outline-none focus-visible:ring-primary relative flex items-center justify-center bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="Your profile preview"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                <Camera className="w-6 h-6" />
+              </div>
+            )}
+
+            {/* Overlay on hover when no upload in progress */}
+            {!isUploading && previewUrl && (
+              <div className="absolute inset-0 bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="w-5 h-5 text-background" />
+              </div>
+            )}
+
+            {/* Upload progress ring overlay */}
+            {isUploading && (
+              <div className="absolute inset-0 bg-background/70 flex items-center justify-center rounded-full">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              </div>
+            )}
+          </button>
+
+          {/* Clear button — shown once a photo is picked */}
+          {previewUrl && !isUploading && (
+            <button
+              type="button"
+              onClick={handleClear}
+              aria-label="Remove photo"
+              data-ocid="landing-avatar-clear"
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-sm hover:bg-destructive/80 transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Success badge */}
+          {uploadedUrl && !isUploading && (
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">
+              <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+            </div>
+          )}
+        </div>
+
+        {/* Progress bar */}
+        {isUploading && (
+          <div className="w-full max-w-[160px]">
+            <div className="h-1 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-200"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-1">
+              Uploading {progress}%…
+            </p>
+          </div>
+        )}
+
+        {/* Upload error */}
+        {error && (
+          <p className="text-xs text-destructive text-center max-w-xs">
+            {error} — tap the photo to try again.
+          </p>
+        )}
+
+        {/* Success note */}
+        {uploadedUrl && !isUploading && (
+          <p className="text-xs text-accent font-medium text-center">
+            Photo saved! It'll be applied to your profile after sign-in.
+          </p>
+        )}
+
+        {/* Choose Photo CTA (if no photo yet) */}
+        {!previewUrl && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            data-ocid="landing-choose-photo-btn"
+            className="border-border text-foreground hover:bg-muted transition-smooth text-xs px-4"
+          >
+            <Camera className="w-3.5 h-3.5 mr-1.5" />
+            Choose Photo
+          </Button>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={handleFileChange}
+          data-ocid="landing-file-input"
+        />
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export function LandingPage() {
   const { login, isError, loginError } = useAuth();
 
+  // Friendly error message for any login failure (not just CANISTER_ID_BACKEND).
+  const errorMessage = loginError?.message
+    ? `Sign-in failed: ${loginError.message.slice(0, 120)}`
+    : "Sign-in encountered an issue. Please try again.";
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Auth error banner — shown when Internet Identity provider fails to init */}
+      {/* Auth error banner — shown for any Internet Identity failure */}
       {isError && (
         <div className="fixed top-0 inset-x-0 z-[60] bg-destructive/10 border-b border-destructive/30 px-4 py-2.5 flex items-center justify-center gap-3">
           <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
-          <p className="text-xs text-destructive font-medium">
-            {loginError?.message?.includes("CANISTER_ID_BACKEND")
-              ? "Authentication is initializing — please try again in a moment."
-              : "Sign-in encountered an issue. Please try again."}
-          </p>
+          <p className="text-xs text-destructive font-medium">{errorMessage}</p>
           <button
             type="button"
             onClick={() => window.location.reload()}
@@ -191,11 +380,12 @@ export function LandingPage() {
         </div>
 
         {/* Hero Content */}
-        <div className="relative z-10 flex flex-col items-center text-center px-5 pt-10 pb-6 max-w-2xl mx-auto">
+        <div className="relative z-10 flex flex-col items-center text-center px-5 pt-10 pb-6 max-w-2xl mx-auto w-full">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full"
           >
             {/* Badge */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/12 border border-primary/25 text-primary text-xs font-semibold mb-5">
@@ -221,8 +411,13 @@ export function LandingPage() {
               No passwords. No email. Just you and Internet Identity.
             </p>
 
+            {/* ── Optional profile picture picker ── */}
+            <div className="max-w-sm mx-auto w-full">
+              <ProfilePicturePicker />
+            </div>
+
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
               <Button
                 onClick={isError ? () => window.location.reload() : login}
                 size="lg"

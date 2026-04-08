@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +29,7 @@ import {
 } from "@/hooks/useProfile";
 import { formatCount, truncateAddress } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { requestBiometric } from "@/utils/biometric";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -37,16 +39,22 @@ import {
   Check,
   Copy,
   Edit2,
+  Eye,
+  EyeOff,
   Grid3X3,
+  KeyRound,
   Link,
   List,
   MapPin,
+  RefreshCw,
   Rocket,
+  Shield,
   Upload,
   Wallet,
+  X,
   Zap,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -191,6 +199,266 @@ function InviteLinkSection({
         </Button>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Account Recovery Section
+// ---------------------------------------------------------------------------
+function AccountRecoverySection() {
+  const { actor } = useBackend();
+  const [phrase, setPhrase] = useState<string | null>(null);
+  const [phraseVisible, setPhraseVisible] = useState(false);
+  const [loading, setLoading] = useState<"view" | "generate" | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [biometricError, setBiometricError] = useState<string | null>(null);
+  const [biometricUnsupported, setBiometricUnsupported] = useState(false);
+
+  async function runBiometricGate(): Promise<boolean> {
+    setBiometricError(null);
+    const result = await requestBiometric();
+    if (result.unsupported) {
+      setBiometricUnsupported(true);
+      return true; // graceful fallback — allow through
+    }
+    if (!result.success) {
+      setBiometricError(
+        result.error ?? "Biometric check failed. Please try again.",
+      );
+      return false;
+    }
+    setBiometricUnsupported(false);
+    return true;
+  }
+
+  async function handleViewPhrase() {
+    if (!actor) return;
+    setLoading("view");
+    try {
+      const allowed = await runBiometricGate();
+      if (!allowed) return;
+      const result = await actor.getRecoveryPhrase();
+      setPhrase(result ?? "");
+      setPhraseVisible(true);
+    } catch {
+      toast.error("Failed to retrieve recovery phrase.");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleGeneratePhrase() {
+    if (!actor) return;
+    setLoading("generate");
+    try {
+      const allowed = await runBiometricGate();
+      if (!allowed) return;
+      const result = await actor.generateRecoveryPhrase();
+      setPhrase(result ?? "");
+      setPhraseVisible(true);
+      toast.success("New recovery phrase generated — save it somewhere safe!");
+    } catch {
+      toast.error("Failed to generate recovery phrase.");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  function handleCopy() {
+    if (!phrase) return;
+    navigator.clipboard.writeText(phrase).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success("Recovery phrase copied to clipboard!");
+    });
+  }
+
+  function handleHide() {
+    setPhraseVisible(false);
+    setPhrase(null);
+    setBiometricError(null);
+  }
+
+  const words = phrase ? phrase.trim().split(/\s+/) : [];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+      className="rounded-xl border border-border bg-card mb-5 overflow-hidden"
+    >
+      {/* Header */}
+      <div className="flex items-start gap-3 p-4 border-b border-border bg-muted/30">
+        <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+          <Shield className="w-4 h-4 text-primary" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-foreground text-sm leading-tight">
+            Account Recovery
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+            Your recovery phrase lets you regain access to your account
+          </p>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-border text-foreground hover:bg-muted gap-1.5"
+            onClick={handleViewPhrase}
+            disabled={loading !== null}
+            data-ocid="recovery-view-btn"
+          >
+            {loading === "view" ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Eye className="w-3.5 h-3.5" />
+            )}
+            View Recovery Phrase
+          </Button>
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5"
+            onClick={handleGeneratePhrase}
+            disabled={loading !== null}
+            data-ocid="recovery-generate-btn"
+          >
+            {loading === "generate" ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <KeyRound className="w-3.5 h-3.5" />
+            )}
+            Generate New Phrase
+          </Button>
+        </div>
+
+        {/* Biometric error message */}
+        <AnimatePresence>
+          {biometricError && (
+            <motion.div
+              key="biometric-error"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2"
+              data-ocid="recovery-biometric-error"
+            >
+              <Shield className="w-3.5 h-3.5 text-destructive shrink-0" />
+              <p className="text-xs text-destructive">{biometricError}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Biometric unsupported note (shown inline with phrase card) */}
+        {biometricUnsupported && phraseVisible && (
+          <div className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border px-3 py-2">
+            <Shield className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              Your device doesn&apos;t support biometric protection.
+            </p>
+          </div>
+        )}
+
+        {/* Phrase reveal card */}
+        <AnimatePresence>
+          {phraseVisible && (
+            <motion.div
+              key="phrase-card"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                {/* Top bar */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                      Recovery Phrase
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleHide}
+                    aria-label="Hide recovery phrase"
+                    className="text-muted-foreground hover:text-foreground transition-smooth"
+                    data-ocid="recovery-hide-btn"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Empty state */}
+                {phrase === "" ? (
+                  <div className="py-3 text-center">
+                    <EyeOff className="w-6 h-6 text-muted-foreground mx-auto mb-2 opacity-50" />
+                    <p className="text-sm text-muted-foreground">
+                      No recovery phrase set yet. Generate one below.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Word grid */}
+                    <div
+                      className="grid grid-cols-3 gap-1.5 mb-4"
+                      data-ocid="recovery-phrase-grid"
+                    >
+                      {words.map((word, i) => (
+                        <div
+                          key={`word-${i + 1}-${word}`}
+                          className="flex items-center gap-1.5 bg-background/80 border border-border rounded-lg px-2.5 py-1.5"
+                        >
+                          <span className="text-[10px] text-muted-foreground font-mono w-4 shrink-0 text-right">
+                            {i + 1}.
+                          </span>
+                          <span className="text-xs font-mono font-medium text-foreground">
+                            {word}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Copy button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full border-primary/40 text-primary hover:bg-primary/10 gap-1.5"
+                      onClick={handleCopy}
+                      data-ocid="recovery-copy-btn"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy to Clipboard
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
+
+                {/* Security notice */}
+                <p className="text-[10px] text-muted-foreground text-center mt-3 leading-snug">
+                  Keep this phrase private. Never share it with anyone.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }
 
@@ -373,6 +641,15 @@ function EditProfileModal({
                 )}
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="text-xs text-primary hover:text-primary/80 underline underline-offset-2 transition-smooth disabled:opacity-50"
+              data-ocid="edit-profile-change-photo-link"
+            >
+              {isUploading ? `Uploading… ${progress}%` : "Change profile photo"}
+            </button>
             <input
               ref={fileInputRef}
               type="file"
@@ -381,12 +658,6 @@ function EditProfileModal({
               onChange={handleAvatarFileChange}
               data-ocid="edit-profile-avatar-file-input"
             />
-            {isUploading && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Upload className="w-3 h-3" />
-                Uploading photo… {progress}%
-              </p>
-            )}
           </div>
 
           <div className="space-y-1">
@@ -451,8 +722,27 @@ interface CreateProfileFormProps {
 
 function CreateProfileForm({ onCreated }: CreateProfileFormProps) {
   const { actor } = useBackend();
-  const [form, setForm] = useState({ displayName: "", bio: "" });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isUploading, progress, uploadFile } = useFileUpload();
+  const [form, setForm] = useState({ displayName: "", bio: "", avatarUrl: "" });
+  const [avatarPreview, setAvatarPreview] = useState("");
   const [loading, setLoading] = useState(false);
+
+  async function handleAvatarFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const preview = URL.createObjectURL(file);
+    setAvatarPreview(preview);
+    try {
+      const url = await uploadFile(file);
+      setForm((f) => ({ ...f, avatarUrl: url }));
+    } catch {
+      setAvatarPreview("");
+      toast.error("Photo upload failed — you can add one later.");
+    }
+  }
 
   const handleCreate = async () => {
     if (!form.displayName.trim()) {
@@ -461,7 +751,11 @@ function CreateProfileForm({ onCreated }: CreateProfileFormProps) {
     }
     setLoading(true);
     try {
-      await actor?.createProfile(form.displayName, form.bio, null);
+      await actor?.createProfile(
+        form.displayName,
+        form.bio,
+        form.avatarUrl || null,
+      );
       toast.success("Profile created! Welcome to SocialChain 🎉");
       onCreated();
     } catch {
@@ -490,6 +784,59 @@ function CreateProfileForm({ onCreated }: CreateProfileFormProps) {
             <p className="text-muted-foreground text-sm">
               Join SocialChain and connect with the world on-chain.
             </p>
+          </div>
+
+          {/* Avatar picker */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              className="relative group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div
+                className={cn(
+                  "w-20 h-20 rounded-full flex items-center justify-center border-2 border-dashed transition-smooth",
+                  avatarPreview
+                    ? "border-transparent"
+                    : "border-primary/40 bg-muted hover:border-primary hover:bg-muted/80",
+                )}
+              >
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="Profile preview"
+                    className="w-20 h-20 rounded-full object-cover ring-2 ring-primary/40"
+                  />
+                ) : (
+                  <Camera className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-smooth" />
+                )}
+              </div>
+              {avatarPreview && (
+                <div className="absolute inset-0 rounded-full bg-foreground/0 group-hover:bg-foreground/30 transition-smooth flex items-center justify-center">
+                  <Camera className="w-5 h-5 text-transparent group-hover:text-primary-foreground transition-smooth" />
+                </div>
+              )}
+              {isUploading && (
+                <div className="absolute inset-0 rounded-full bg-background/70 flex items-center justify-center">
+                  <span className="text-xs font-mono text-primary">
+                    {progress}%
+                  </span>
+                </div>
+              )}
+            </button>
+            <p className="text-xs text-muted-foreground">
+              {avatarPreview
+                ? "Tap to change photo"
+                : "Add a profile photo (optional)"}
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFileChange}
+              data-ocid="create-profile-avatar-input"
+            />
           </div>
 
           <div className="space-y-4">
@@ -529,7 +876,7 @@ function CreateProfileForm({ onCreated }: CreateProfileFormProps) {
           <Button
             className="w-full bg-primary text-primary-foreground font-semibold"
             onClick={handleCreate}
-            disabled={loading}
+            disabled={loading || isUploading}
             data-ocid="create-profile-submit"
           >
             {loading ? "Creating…" : "Get Started on SocialChain"}
@@ -704,7 +1051,7 @@ export function ProfilePage() {
         <div className="px-5 pb-5">
           {/* Avatar row */}
           <div className="flex items-end justify-between -mt-12 mb-4">
-            <div className="relative">
+            <div className="relative group">
               <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/60 to-secondary/40 blur-sm" />
               <div className="relative ring-4 ring-card rounded-full">
                 <Avatar
@@ -714,6 +1061,18 @@ export function ProfilePage() {
                   online={isOwnProfile}
                 />
               </div>
+              {/* Tap-to-edit overlay on avatar (own profile) */}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  className="absolute inset-0 rounded-full bg-foreground/0 group-hover:bg-foreground/30 transition-smooth flex items-center justify-center focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Change profile photo"
+                  data-ocid="profile-avatar-edit-btn"
+                >
+                  <Camera className="w-5 h-5 text-transparent group-hover:text-primary-foreground transition-smooth" />
+                </button>
+              )}
             </div>
 
             <div className="flex gap-2 flex-wrap justify-end">
@@ -824,6 +1183,9 @@ export function ProfilePage() {
           onSetUsername={() => setSetUsernameOpen(true)}
         />
       )}
+
+      {/* Account Recovery section (own profile only) */}
+      {isOwnProfile && <AccountRecoverySection />}
 
       {/* Posts section */}
       <Tabs defaultValue="posts">

@@ -25,6 +25,11 @@ export function useAuth(): UseAuthReturn {
   const isAuthenticated = loginStatus === "success" && identity != null;
   const isError = loginStatus === "loginError";
 
+  // Surface all auth errors to the console so issues are always visible.
+  if (isError && loginError) {
+    console.error("[SocialChain] Internet Identity login error:", loginError);
+  }
+
   const status: AuthStatus = isInitializing
     ? "initializing"
     : isAuthenticated
@@ -35,6 +40,14 @@ export function useAuth(): UseAuthReturn {
 
   const principal = identity?.getPrincipal().toText() ?? null;
 
+  const safeLogin = () => {
+    try {
+      login();
+    } catch (err) {
+      console.error("[SocialChain] login() threw synchronously:", err);
+    }
+  };
+
   return {
     isAuthenticated,
     isInitializing,
@@ -42,7 +55,7 @@ export function useAuth(): UseAuthReturn {
     status,
     principal,
     loginError,
-    login,
+    login: safeLogin,
     logout: clear,
   };
 }

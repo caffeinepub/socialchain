@@ -21,6 +21,10 @@ export const mockBackend: backendInterface = {
 
   editPost: async () => ok,
 
+  generateRecoveryPhrase: async () => null,
+
+  getRecoveryPhrase: async () => null,
+
   generateInviteLink: async (username) =>
     `${typeof window !== "undefined" ? window.location.origin : "https://socialchain.app"}/add/${username}`,
 

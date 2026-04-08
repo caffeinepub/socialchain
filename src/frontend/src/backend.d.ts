@@ -81,6 +81,7 @@ export interface backendInterface {
     deletePost(postId: PostId): Promise<Result>;
     editPost(postId: PostId, text: string, imageUrl: string | null): Promise<Result>;
     generateInviteLink(username: string): Promise<string>;
+    generateRecoveryPhrase(): Promise<string | null>;
     getAllPosts(): Promise<Array<Post>>;
     getBalance(token: TokenType): Promise<bigint>;
     getComments(postId: PostId): Promise<Array<Comment>>;
@@ -90,6 +91,7 @@ export interface backendInterface {
     getPost(id: PostId): Promise<Post | null>;
     getPostsByUser(userId: UserId): Promise<Array<Post>>;
     getProfile(userId: UserId): Promise<Profile | null>;
+    getRecoveryPhrase(): Promise<string | null>;
     getTransactionHistory(): Promise<Array<Transaction>>;
     getUsername(): Promise<string | null>;
     likePost(postId: PostId): Promise<Result>;
