@@ -1,0 +1,24 @@
+{
+  "overview": "SocialChain is an all-in-one social media platform with a built-in crypto wallet. Share posts with photos, connect with people via personalized invite links, and manage ICP, ckBTC, ckETH, ckUSDC, and ckUSDT — all in one place.",
+  "features": [
+    "Text and photo social feed with likes and comments",
+    "User profiles with editable bio and avatar uploads",
+    "Internet Identity authentication",
+    "Multi-token crypto wallet (ICP, ckBTC, ckETH, ckUSDC, ckUSDT)",
+    "Live token balances with send/receive flows and transaction history",
+    "Personalized invite links for easy contact sharing",
+    "Mobile-first responsive design"
+  ],
+  "category": "social",
+  "tags": [
+    "social",
+    "crypto",
+    "wallet",
+    "icp",
+    "blockchain",
+    "feed",
+    "profiles",
+    "mobile"
+  ],
+  "last_updated": "2026-04-07T21:32:40.031Z"
+}

@@ -1,0 +1,99 @@
+// Version: 1.0.0
+type CommentId__821569710 = Nat;
+type Comment__220674806 =
+  {
+    author : UserId__158757552;
+    createdAt : Timestamp__301639476;
+    id : CommentId__821569710;
+    postId : PostId__861309770;
+    text : Text
+  };
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type List__415060402<T> = List__790383201<T>;
+type List__790383201<T> =
+  {
+    var blockIndex : Nat__490723111;
+    var blocks : [var [var ?T]];
+    var elementIndex : Nat__490723111
+  };
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type PostId__861309770 = Nat;
+type PostInternal__320759474 =
+  {
+    author : UserId__158757552;
+    createdAt : Timestamp__301639476;
+    id : PostId__861309770;
+    imageUrl : ?Text;
+    var likedBy : [UserId__158757552];
+    text : Text;
+    var updatedAt : Timestamp__301639476
+  };
+type Profile__901378260 =
+  {
+    avatarUrl : ?Text;
+    bio : Text;
+    contacts : [UserId__158757552];
+    createdAt : Timestamp__301639476;
+    displayName : Text;
+    id : UserId__158757552;
+    updatedAt : Timestamp__301639476;
+    username : ?Text
+  };
+type Timestamp__301639476 = Int;
+type TokenType__456336720 = {#ICP; #ckBTC; #ckETH; #ckUSDC; #ckUSDT};
+type Transaction__15087323 =
+  {
+    amount : Nat;
+    counterparty : Principal;
+    id : TxId__592716307;
+    memo : ?Text;
+    status : TxStatus__446544354;
+    timestamp : Timestamp__301639476;
+    token : TokenType__456336720;
+    txType : TxType__915280319
+  };
+type TxId__592716307 = Nat;
+type TxStatus__446544354 = {#completed; #failed; #pending};
+type TxType__915280319 = {#receive; #send};
+type UserId__158757552 = Principal;
+actor {
+  stable comments :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?Comment__220674806]];
+      var elementIndex : Nat__490723111
+    };
+  stable var nextCommentId : Nat;
+  stable var nextPostId : Nat;
+  stable var nextTxId : Nat;
+  stable posts :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?PostInternal__320759474]];
+      var elementIndex : Nat__490723111
+    };
+  stable profiles :
+    {
+      var root : Node__46230540<UserId__158757552, Profile__901378260>;
+      var size : Nat__490723111
+    };
+  stable txHistory :
+    {
+      var root :
+        Node__46230540<UserId__158757552,
+                        List__415060402<Transaction__15087323>>;
+      var size : Nat__490723111
+    };
+  stable usernames :
+    {
+      var root : Node__46230540<Text, UserId__158757552>;
+      var size : Nat__490723111
+    }
+};

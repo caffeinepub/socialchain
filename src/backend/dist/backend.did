@@ -1,0 +1,102 @@
+type UserId = principal;
+type TxType = 
+ variant {
+   receive;
+   send;
+ };
+type TxStatus = 
+ variant {
+   completed;
+   failed;
+   pending;
+ };
+type TxId = nat;
+type Transaction = 
+ record {
+   amount: nat;
+   counterparty: principal;
+   id: TxId;
+   memo: opt text;
+   status: TxStatus;
+   timestamp: Timestamp;
+   token: TokenType;
+   txType: TxType;
+ };
+type TokenType = 
+ variant {
+   ICP;
+   ckBTC;
+   ckETH;
+   ckUSDC;
+   ckUSDT;
+ };
+type Timestamp = int;
+type Result = 
+ variant {
+   err: text;
+   ok;
+ };
+type Profile = 
+ record {
+   avatarUrl: opt text;
+   bio: text;
+   contacts: vec UserId;
+   createdAt: Timestamp;
+   displayName: text;
+   id: UserId;
+   updatedAt: Timestamp;
+   username: opt text;
+ };
+type PostId = nat;
+type Post = 
+ record {
+   author: UserId;
+   createdAt: Timestamp;
+   id: PostId;
+   imageUrl: opt text;
+   likeCount: nat;
+   likedBy: vec UserId;
+   "text": text;
+   updatedAt: Timestamp;
+ };
+type CommentId = nat;
+type Comment = 
+ record {
+   author: UserId;
+   createdAt: Timestamp;
+   id: CommentId;
+   postId: PostId;
+   "text": text;
+ };
+service : {
+  addComment: (postId: PostId, "text": text) -> (CommentId);
+  addContact: (username: text) -> (Result);
+  createPost: ("text": text, imageUrl: opt text) -> (PostId);
+  createProfile: (displayName: text, bio: text, avatarUrl: opt text) ->
+   (Result);
+  deleteComment: (postId: PostId, commentId: CommentId) -> (Result);
+  deletePost: (postId: PostId) -> (Result);
+  editPost: (postId: PostId, "text": text, imageUrl: opt text) -> (Result);
+  generateInviteLink: (username: text) -> (text);
+  getAllPosts: () -> (vec Post) query;
+  getBalance: (token: TokenType) -> (nat);
+  getComments: (postId: PostId) -> (vec Comment) query;
+  getContacts: () -> (vec Profile);
+  getInviteProfile: (username: text) -> (opt Profile) query;
+  getMyProfile: () -> (opt Profile);
+  getPost: (id: PostId) -> (opt Post) query;
+  getPostsByUser: (userId: UserId) -> (vec Post) query;
+  getProfile: (userId: UserId) -> (opt Profile) query;
+  getTransactionHistory: () -> (vec Transaction);
+  getUsername: () -> (opt text);
+  likePost: (postId: PostId) -> (Result);
+  listUsers: () -> (vec Profile) query;
+  removeContact: (userId: UserId) -> (Result);
+  searchUsers: (searchTerm: text) -> (vec Profile) query;
+  sendToken: (token: TokenType, to: principal, amount: nat, memo:
+   opt text) -> (Result);
+  setUsername: (username: text) -> (Result);
+  unlikePost: (postId: PostId) -> (Result);
+  updateProfile: (displayName: text, bio: text, avatarUrl: opt text) ->
+   (Result);
+}
